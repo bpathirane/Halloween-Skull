@@ -14,7 +14,7 @@ int lastButtonState = LOW;
 bool motionDetected = false;
 unsigned long lastMotionDetectedTime = 0;
 
-unsigned long activatedDuration = 10 * 1000;
+unsigned long activatedDuration = 5 * 1000;
 int fadingDuration = 1 * 1000;
 
 void setup() {
@@ -24,6 +24,7 @@ void setup() {
  pinMode(MOTION_DETECTOR_PIN, INPUT);
 
  analogWrite(LED_PIN, LOW);
+ lastMotionDetectedTime = millis() + activatedDuration;
 }
 
 void loop() {
@@ -68,7 +69,6 @@ void loop() {
   // Serial.println(reading);
   if (reading == HIGH) {
     lastMotionDetectedTime = lastDebounceTime = millis();
-    Serial.println(lastMotionDetectedTime);
   }
 /*
   if ((millis() - lastDebounceTime) > debounceDelay){
@@ -84,11 +84,19 @@ void loop() {
     motionDetected = false;
   }
   */
-
-  if ((millis() - lastMotionDetectedTime) < activatedDuration) {
+  unsigned long now = millis();
+  unsigned long activatedTime = now - lastMotionDetectedTime;
+  if (activatedTime < activatedDuration) {
     // Within the activation period
-    brightness = 255;
-    Serial.println((millis() - lastMotionDetectedTime));
+    if (activatedTime < fadingDuration) {
+      brightness = (activatedTime / (float)fadingDuration) * 255;
+    }
+    else if ((activatedDuration - activatedTime) < fadingDuration) {
+      brightness = ((activatedDuration - activatedTime)/(float)fadingDuration) * 255;
+    }
+    else {
+      brightness = 255;
+    }
   }
   else
   {

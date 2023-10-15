@@ -2,11 +2,13 @@
 const int DELAY = 60;
 const int LED_PIN = 9;
 const int MOTION_DETECTOR_PIN = 2;
+const int FULL_BRIGHTNESS = 255;
 
 int brightness = 0;
 
 unsigned long activatedDuration = 10 * 1000;
 unsigned long maxActivatedDuration = activatedDuration * 5;
+unsigned long activationBreakTime = 5 * 1000;
 
 int fadingDuration = activatedDuration / 5;
 
@@ -16,50 +18,58 @@ unsigned long activationEndTime = 0;
 
 
 void setup() {
- Serial.begin(9600);
+  Serial.begin(9600);
   // put your setup code here, to run once:
- pinMode(LED_PIN, OUTPUT);
- pinMode(MOTION_DETECTOR_PIN, INPUT);
+  pinMode(LED_PIN, OUTPUT);
+  pinMode(MOTION_DETECTOR_PIN, INPUT);
 
- analogWrite(LED_PIN, LOW);
+  analogWrite(LED_PIN, LOW);
 }
 
 void loop() {
   unsigned long now = millis();
 
-  if (millis() > activationEndTime){
+  // If time has passed the end time, and we are still activated
+  // deactivate now
+  if (millis() > activationEndTime && isActivated) {
     isActivated = false;
     brightness = 0;
   }
 
   int reading = digitalRead(MOTION_DETECTOR_PIN);
+
   if (reading == HIGH) {
-    if (!isActivated) {
+    // If motion is detected, and we are not currently active,
+    // and the required break time since last activation has passed
+    // then activate!
+    if (!isActivated && (millis() > (activationEndTime + activationBreakTime))) {
       // First time activating
       isActivated = true;
       activationStartTime = millis();
     }
-    // Extend the activation time, for each motion detection
-    // TODO: Add a max activation time to prevent 
-    // running for too long.
-    activationEndTime = millis() + activatedDuration;
+    if (isActivated) {
+      // We are in activated mode, yet we keep detecting more motion
+      // Extend the activation time, for each motion detection
+      activationEndTime = millis() + activatedDuration;
+      // Yet, ensure that activation endtime does not pass the maximum
+      activationEndTime = activationEndTime > activationStartTime + maxActivatedDuration ? activationStartTime + maxActivatedDuration : activationEndTime;
+    }
   }
 
   if (isActivated) {
-  unsigned long activatedTime = now - activationStartTime;
-  unsigned long timeToFinish = activationEndTime - millis();
-    // Within the activation period
+    unsigned long activatedTime = now - activationStartTime;
+    unsigned long timeToFinish = activationEndTime - millis();
+
+    // We just activated, fade in!
     if (activatedTime < fadingDuration) {
       // Slowly increase brightness
-      brightness = (activatedTime / (float)fadingDuration) * 255;
-    }
-    else if (timeToFinish < fadingDuration) {
+      brightness = (activatedTime / (float)fadingDuration) * FULL_BRIGHTNESS;
+    } else if (timeToFinish < fadingDuration) { // We are deactivating, fade out!
       // Slowly decrease brightness
-      brightness = (timeToFinish/(float)fadingDuration) * 255;
-    }
-    else {
+      brightness = (timeToFinish / (float)fadingDuration) * FULL_BRIGHTNESS;
+    } else {
       // Keep brightness constant
-      brightness = 255;
+      brightness = FULL_BRIGHTNESS;
     }
   }
 

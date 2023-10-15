@@ -14,8 +14,8 @@ int lastButtonState = LOW;
 bool motionDetected = false;
 unsigned long lastMotionDetectedTime = 0;
 
-unsigned long activatedDuration = 5 * 1000;
-int fadingDuration = 1 * 1000;
+unsigned long activatedDuration = 10 * 1000;
+int fadingDuration = 2 * 1000;
 
 void setup() {
  Serial.begin(9600);
@@ -86,7 +86,7 @@ void loop() {
   */
   unsigned long now = millis();
   unsigned long activatedTime = now - lastMotionDetectedTime;
-  if (activatedTime < activatedDuration) {
+  if (activatedTime <= activatedDuration) {
     // Within the activation period
     if (activatedTime < fadingDuration) {
       brightness = (activatedTime / (float)fadingDuration) * 255;
